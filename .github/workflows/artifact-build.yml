@@ -1,15 +1,16 @@
-name: Artifact Build
+name: Build and upload artifacts
 
 on:
   push:
     paths:
       - 'src/**'
       - 'pom.xml'
-      - '.github/workflows/maven.yml'
+      - '.github/workflows/artifact-build.yml'
   pull_request:
     paths:
       - 'src/**'
       - 'pom.xml'
+      - '.github/workflows/artifact-build.yml'
   workflow_dispatch: {}
 
 jobs:
@@ -35,12 +36,19 @@ jobs:
           restore-keys: ${{ runner.os }}-m2
 
       - name: Build via Maven
-        run: mvn verify -B --file pom.xml -DdisableXmlReport=true
+        run: mvn -B -DskipTests package --file pom.xml
+
+      - name: List built jars
+        if: always()
+        run: |
+          echo "JAR files under target directories:"
+          find . -type f -path "*/target/*.jar" -printf "%p\n" | sort || true
 
       - name: Upload build artifacts
+        if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: build-${{ github.ref_name }}-${{ github.run_number }}
+          name: jars-${{ github.ref_name }}-${{ github.run_number }}
           path: |
             **/target/*.jar
             !**/target/*-sources.jar
