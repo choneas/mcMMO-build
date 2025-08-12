@@ -1,0 +1,49 @@
+name: Artifact Build
+
+on:
+  push:
+    paths:
+      - 'src/**'
+      - 'pom.xml'
+      - '.github/workflows/maven.yml'
+  pull_request:
+    paths:
+      - 'src/**'
+      - 'pom.xml'
+  workflow_dispatch: {}
+
+jobs:
+  compile:
+    name: Maven compiler
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Java 17 setup
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'adopt'
+          java-package: jdk
+          java-version: '17'
+
+      - name: Cache Maven packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2
+          key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
+          restore-keys: ${{ runner.os }}-m2
+
+      - name: Build via Maven
+        run: mvn verify -B --file pom.xml -DdisableXmlReport=true
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-${{ github.ref_name }}-${{ github.run_number }}
+          path: |
+            **/target/*.jar
+            !**/target/*-sources.jar
+            !**/target/*-javadoc.jar
+          if-no-files-found: error
+          retention-days: 14
